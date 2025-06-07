@@ -1,29 +1,28 @@
+# secure_framework/lib/generators/secure_framework/install/install_generator.rb
 module SecureFramework
   module Generators
     class InstallGenerator < Rails::Generators::Base
-      source_root File.expand_path('templates', __dir__)
-
-      def install_devise
+      
+      def install_devise_and_configure
         say "Setting up Devise for secure authentication..."
         
-        # Instalar Devise
+        # 1. Instala Devise, creando config/initializers/devise.rb
         generate "devise:install"
         
-        # Crear modelo User con campos básicos
-        generate "devise", "User", "username:string"
+        # 2. Modifica el archivo para imponer nuestra política de seguridad
+        say "Applying secure password policy (12 characters minimum)...", :yellow
+        gsub_file 'config/initializers/devise.rb',
+                  /config\.password_length = 6\.\.128/,
+                  'config.password_length = 12..128'
         
-        # Añadir ruta devise_for
+        # 3. Crea el modelo de usuario y sus rutas
+        generate "devise", "User", "username:string"
         route "devise_for :users"
         
-        # Copiar vistas para personalización
-        generate "devise:views"
-        
-        # Mensaje final con instrucciones
-        say "Devise has been successfully set up!", :green
+        say "Devise has been successfully set up with enhanced security defaults!", :green
         say "Next steps:", :blue
-        say "1. Run 'rails db:migrate' to create the users table", :blue
-        say "2. Add 'before_action :authenticate_user!' to controllers you want to protect", :blue
-        say "3. Customize the views in app/views/devise as needed", :blue
+        say "1. Run 'rails db:migrate' to create the users table.", :blue
+        say "2. Add 'before_action :authenticate_user!' to controllers you want to protect.", :blue
       end
     end
   end

@@ -1,0 +1,7 @@
+<div class="field">
+  <%= f.label :password %>
+  <% if @minimum_password_length %>
+    <em>(<%= @minimum_password_length %> caracteres mínimo)</em>
+  <% end %>
+  <%= f.password_field :password, autocomplete: "new-password" %>
+</div>
