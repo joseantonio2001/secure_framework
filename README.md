@@ -17,10 +17,10 @@ The first available component provides secure authentication based on Devise, wi
 
 -   Secure password storage (bcrypt).
 -   **Strong Password Policy**: Automatically enforces a **12-character minimum** password length upon installation.
--   Session management.
--   Account locking features (available via Devise configuration).
--   Customizable views.
--   Built-in protection against common vulnerabilities like CSRF.
+-   **Account Lockout**: Mitigates brute-force attacks by locking accounts after multiple failed attempts.
+-   **Password Recovery**: Allows users to securely reset their password.
+-   Session management and protection against CSRF attacks.
+-   Customizable views for easy integration.
 
 ## Installation & Integration
 
@@ -65,15 +65,25 @@ The `secure_framework:install` generator automatically configures your applicati
 
 3.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
 
+## Aplicación de Demostración (demo_app)
+
+Para ver una implementación completa y funcional de este framework, puedes explorar la aplicación de demostración. Esta aplicación sirve como un ejemplo práctico de integración y es la base sobre la cual se ejecuta la suite de pruebas de seguridad.
+
+➡️ Repositorio de la Demo: https://github.com/joseantonio2001/demo_app
 
 ## Testing
-The demo app includes RSpec feature tests that verify:
 
-- User registration
-- Session management
-- Access control
+The demo app includes a comprehensive suite of RSpec feature tests to verify the core security functionalities. This ensures that the features configured by the generator work as expected.
 
-Run tests with:
+The test suite covers:
+
+-   **User Registration**: Verifies successful sign-up and handles invalid data.
+-   **Session Management**: Confirms users can log in and log out correctly.
+-   **Access Control**: Ensures protected areas are only accessible to authenticated users.
+-   **Account Lockout**: Tests that a user's account is locked after the configured number of failed login attempts.
+-   **Password Recovery**: Validates the full password reset flow, from email request to successful password change.
+
+Run the full test suite with:
 `bundle exec rspec`
 
 
