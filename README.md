@@ -50,6 +50,7 @@ class DashboardController < ApplicationController
     # Only accessible by authenticated users
   end
 end
+```
 
 
 ## Testing
