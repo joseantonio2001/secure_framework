@@ -1,43 +1,62 @@
-# SecureFramework
+# Secure Framework
 
-TODO: Delete this and the text below, and describe your gem
+A modular security framework for Ruby on Rails applications, providing reusable secure components following "secure by default" principles.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/secure_framework`. To experiment with that code, run `bin/console` for an interactive prompt.
+## Design Rationale
 
-## Installation
+This framework is implemented as a Ruby gem with Rails generators rather than a Rails Engine for several key reasons:
 
-TODO: Replace `UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG` with your gem name right after releasing it to RubyGems.org. Please do not do it earlier due to security reasons. Alternatively, replace this section with instructions to install your gem from git if you don't plan to release to RubyGems.org.
+1. **Ease of Integration**: Generators allow for flexible integration into existing applications without complex mounting or namespace concerns.
+2. **Customization**: Users can easily modify generated files to suit their specific needs.
+3. **Incremental Adoption**: Components can be added gradually without requiring a full framework commitment.
+4. **Simplified Development**: Gem development is more straightforward for our initial focus on core security components.
 
-Install the gem and add to the application's Gemfile by executing:
+## Phase 1: Secure Authentication
 
-```bash
-bundle add UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
+The first available component provides secure authentication based on Devise, with:
 
-If bundler is not being used to manage dependencies, install the gem by executing:
+- Secure password storage (bcrypt)
+- Session management
+- Account locking
+- Customizable views
+- Built-in protection against common vulnerabilities
 
-```bash
-gem install UPDATE_WITH_YOUR_GEM_NAME_IMMEDIATELY_AFTER_RELEASE_TO_RUBYGEMS_ORG
-```
+## Installation & Integration
+
+Add this line to your application's Gemfile:
+gem 'secure_framework'
+
+Then execute:
+bundle install
+
+Run the installation generator:
+rails generate secure_framework:install
+
+Apply the database migrations:
+rails db:migrate
 
 ## Usage
 
-TODO: Write usage instructions here
+To protect a controller, add:
+before_action :authenticate_user!
 
-## Development
+Example:
+class DashboardController < ApplicationController
+  before_action :authenticate_user!
+  
+  def index
+    # Only accessible by authenticated users
+  end
+end
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+## Testing
+The demo app includes RSpec feature tests that verify:
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+- User registration
+- Session management
+- Access control
 
-## Contributing
+Run tests with:
+bundle exec rspec
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/secure_framework. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/secure_framework/blob/master/CODE_OF_CONDUCT.md).
 
-## License
-
-The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the SecureFramework project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/secure_framework/blob/master/CODE_OF_CONDUCT.md).

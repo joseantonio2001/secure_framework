@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "secure_framework/version"
+require "devise"
 
 module SecureFramework
   class Error < StandardError; end

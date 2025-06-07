@@ -32,16 +32,13 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  spec.add_dependency "rails", "~> 7.2.2"
-  spec.add_dependency "devise", "~> 4.9.3"
-
   # Dependencias principales
   spec.add_dependency "rails", "~> 7.2.2"
   spec.add_dependency "devise", "~> 4.9.3"
 
   # Dependencias para desarrollo
   spec.add_development_dependency "rspec-rails", "~> 6.1.0"
-  spec.add_development_dependency "sqlite3", "~> 1.6.0
+  spec.add_development_dependency "sqlite3", "~> 1.6.0"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html
