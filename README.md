@@ -65,11 +65,11 @@ The `secure_framework:install` generator automatically configures your applicati
 
 3.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
 
-## Aplicación de Demostración (demo_app)
+## Demonstration Application (demo_app)
 
-Para ver una implementación completa y funcional de este framework, puedes explorar la aplicación de demostración. Esta aplicación sirve como un ejemplo práctico de integración y es la base sobre la cual se ejecuta la suite de pruebas de seguridad.
+To see a complete and functional implementation of this framework, you can explore the demonstration application. This application serves as a practical integration example and is the foundation upon which the security test suite is run.
 
-➡️ Repositorio de la Demo: https://github.com/joseantonio2001/demo_app
+➡️ **Demo Repository:** [https://github.com/joseantonio2001/demo_app](https://github.com/joseantonio2001/demo_app)
 
 ## Testing
 
