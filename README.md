@@ -52,6 +52,19 @@ class DashboardController < ApplicationController
 end
 ```
 
+## Automatic Security Features
+
+The `secure_framework:install` generator automatically configures your application with the following security-by-default settings:
+
+1.  **Strong Password Policy**: Enforces a minimum password length of 12 characters. This is configured in `config/initializers/devise.rb`.
+
+2.  **Account Locking**: Enabled by default to mitigate brute-force attacks.
+    * Accounts are locked after **5 failed login attempts**.
+    * The lock lasts for **30 minutes**.
+    * Configuration can be found in `config/initializers/devise.rb`.
+
+3.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
+
 
 ## Testing
 The demo app includes RSpec feature tests that verify:
