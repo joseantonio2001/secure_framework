@@ -1,0 +1,11 @@
+Description:
+    Sets up secure authentication using Devise in your Rails application.
+
+Example:
+    rails generate secure_framework:install
+
+    This will:
+    - Install Devise
+    - Create a User model with basic fields
+    - Add devise_for :users to your routes
+    - Generate Devise views for customization
