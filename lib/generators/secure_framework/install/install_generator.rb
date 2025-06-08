@@ -6,11 +6,40 @@ module SecureFramework
       source_root File.expand_path('templates', __dir__)
 
       def install_dependencies
-        install_devise_and_configure
-        install_pundit
+        # 1. Comprobar e instalar Devise
+        if devise_installed?
+          say "The 'devise' gem is already in Gemfile.lock. Skipping installation and configuration.", :yellow
+        else
+          say "The 'devise' gem was not found. Proceeding with installation and configuration.", :cyan
+          install_devise_and_configure
+        end
+
+        # 2. Comprobar e instalar Pundit
+        if pundit_installed?
+          say "The 'pundit' gem is already in Gemfile.lock. Skipping installation.", :yellow
+        else
+          say "The 'pundit' gem was not found. Proceeding with installation.", :cyan
+          install_pundit
+        end
       end
 
       private
+
+      # MÉTODOS DE COMPROBACIÓN DE GEMFILE.LOCK
+
+      def devise_installed?
+        gemfile_lock_path = File.join(destination_root, 'Gemfile.lock')
+        return false unless File.exist?(gemfile_lock_path)
+        File.read(gemfile_lock_path).match?(/^\s+devise\s\(/)
+      end
+
+      def pundit_installed?
+        gemfile_lock_path = File.join(destination_root, 'Gemfile.lock')
+        return false unless File.exist?(gemfile_lock_path)
+        File.read(gemfile_lock_path).match?(/^\s+pundit\s\(/)
+      end
+
+      # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SIN CAMBIOS, SÓLO SE EJECUTAN CUANDO ES NECESARIO)
       
       def install_devise_and_configure
         say "Setting up Devise with enhanced security defaults...", :cyan
@@ -43,7 +72,6 @@ module SecureFramework
         end
       end      
 
-
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
         gsub_file 'config/initializers/devise.rb',
@@ -53,7 +81,7 @@ module SecureFramework
 
       def configure_account_locking
         say "Enabling account locking by default...", :yellow
-        # Descomenta y ajusta las opciones de bloqueo existentes para mantener la indentación
+        # Descomentar y ajustar las opciones de bloqueo existentes para mantener la indentación
         gsub_file 'config/initializers/devise.rb', '# config.lock_strategy = :failed_attempts', 'config.lock_strategy = :failed_attempts'
         gsub_file 'config/initializers/devise.rb', '# config.unlock_strategy = :both', 'config.unlock_strategy = :time'
         gsub_file 'config/initializers/devise.rb', '# config.maximum_attempts = 20', 'config.maximum_attempts = 5'
@@ -67,7 +95,7 @@ module SecureFramework
                          "  config.secret_key = Rails.application.credentials.dig(:devise, :secret_key)\n",
                          after: "Devise.setup do |config|"
         
-        # Comenta la clave original si existe
+        # Comentar la clave original si existe
         gsub_file 'config/initializers/devise.rb', /^\s*config\.secret_key = '.+'/, '# \0'
         
         say "Action required: Please run 'rails credentials:edit' to set your devise secret_key.", :red
