@@ -35,6 +35,7 @@ Gem::Specification.new do |spec|
   # Dependencias principales
   spec.add_dependency "rails", "~> 7.2.2"
   spec.add_dependency "devise", "~> 4.9.3"
+  spec.add_dependency "pundit", "~> 2.3"
 
   # Dependencias para desarrollo
   spec.add_development_dependency "rspec-rails", "~> 6.1.0"

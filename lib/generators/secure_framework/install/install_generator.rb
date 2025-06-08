@@ -3,6 +3,14 @@ require 'rails/generators/base'
 module SecureFramework
   module Generators
     class InstallGenerator < Rails::Generators::Base
+      source_root File.expand_path('templates', __dir__)
+
+      def install_dependencies
+        install_devise_and_configure
+        install_pundit
+      end
+
+      private
       
       def install_devise_and_configure
         say "Setting up Devise with enhanced security defaults...", :cyan
@@ -27,7 +35,14 @@ module SecureFramework
         print_success_message
       end
 
-      private
+      def install_pundit
+        say "Setting up Pundit for authorization...", :cyan
+        generate "pundit:install"
+        inject_into_class "app/controllers/application_controller.rb", ApplicationController do
+          "  include Pundit::Authorization\n"
+        end
+      end      
+
 
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
@@ -47,7 +62,6 @@ module SecureFramework
 
       def migrate_secret_to_credentials
         say "Configuring Devise to use credentials for secret_key...", :yellow
-        # Inyecta la línea con la indentación correcta después de Devise.setup
         inject_into_file 'config/initializers/devise.rb', 
                          "\n  # Load Devise secret key from encrypted credentials.\n" \
                          "  config.secret_key = Rails.application.credentials.dig(:devise, :secret_key)\n",
