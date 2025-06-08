@@ -11,16 +11,25 @@ This framework is implemented as a Ruby gem with Rails generators rather than a 
 3.  **Incremental Adoption**: Components can be added gradually without requiring a full framework commitment.
 4.  **Simplified Development**: Gem development is more straightforward for our initial focus on core security components.
 
-## Phase 1: Secure Authentication
+## Security Components
 
-The first available component provides secure authentication based on Devise, with:
+### Phase 1: Secure Authentication (Devise)
+
+The first available component provides secure authentication based on **Devise**, with:
 
 -   Secure password storage (bcrypt).
 -   **Strong Password Policy**: Automatically enforces a **12-character minimum** password length upon installation.
 -   **Account Lockout**: Mitigates brute-force attacks by locking accounts after multiple failed attempts.
 -   **Password Recovery**: Allows users to securely reset their password.
 -   Session management and protection against CSRF attacks.
--   Customizable views for easy integration.
+
+### Phase 2: Granular Authorization (Pundit)
+
+The second component integrates **Pundit** to manage permissions, enabling fine-grained control over what an authenticated user is allowed to do.
+
+-   **Clear Permission Policies**: Authorization logic is centralized in simple, easy-to-understand `Policy` classes.
+-   **Automatic Setup**: The generator installs and configures Pundit in the `ApplicationController`, making it ready to use.
+-   **Controller and View-Level Security**: Allows for easy protection of controller actions and conditionally rendering UI elements.
 
 ## Installation & Integration
 
@@ -30,7 +39,7 @@ Add this line to your application's Gemfile:
 Then execute:
 `bundle install`
 
-Run the installation generator to set up Devise with secure defaults:
+Run the installation generator to set up Devise (with secure defaults) and Pundit:
 `rails generate secure_framework:install`
 
 Apply the database migrations:
@@ -38,10 +47,12 @@ Apply the database migrations:
 
 ## Usage
 
-To protect a controller, add the `before_action` filter provided by Devise:
+### Authentication (Who can access?)
+
+To protect a controller and require a user to be logged in, use the `before_action` filter provided by Devise:
 `before_action :authenticate_user!`
 
-Example:
+**Example:**
 ```ruby
 class DashboardController < ApplicationController
   before_action :authenticate_user!
@@ -50,6 +61,41 @@ class DashboardController < ApplicationController
     # Only accessible by authenticated users
   end
 end
+```
+
+### Authorization (What can a user do?)
+
+Once a user is authenticated, Pundit helps you manage their permissions.
+
+**1. Protecting Controller Actions:**
+
+Use the `authorize` method in your controller actions to enforce permission policies.
+
+```ruby
+# app/controllers/posts_controller.rb
+class PostsController < ApplicationController
+  def update
+    @post = Post.find(params[:id])
+    authorize @post # Raises an error if the user is not allowed by the PostPolicy
+    
+    # ... update logic
+  end
+end
+```
+**2. Conditionally Rendering in Views:**
+
+Use the `policy` helper in your views to show or hide UI elements based on the current user's permissions.
+
+```erb
+<!-- app/views/posts/show.html.erb -->
+
+<h1><%= @post.title %></h1>
+<p><%= @post.content %></p>
+
+<%# The edit link is only shown if the policy allows it %>
+<% if policy(@post).edit? %>
+  <%= link_to 'Edit', edit_post_path(@post) %>
+<% end %>
 ```
 
 ## Automatic Security Features
@@ -65,25 +111,32 @@ The `secure_framework:install` generator automatically configures your applicati
 
 3.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
 
-## Demonstration Application (demo_app)
+## Demonstration Application & Testing
 
-To see a complete and functional implementation of this framework, you can explore the demonstration application. This application serves as a practical integration example and is the foundation upon which the security test suite is run.
+To verify that the framework functions as expected, validation is performed through a demonstration application (`demo_app`) that integrates the gem. **All security tests are located and run within this application**, serving as a real-world use case.
 
 ➡️ **Demo Repository:** [https://github.com/joseantonio2001/demo_app](https://github.com/joseantonio2001/demo_app)
 
-## Testing
+### Test Coverage
 
-The demo app includes a comprehensive suite of RSpec feature tests to verify the core security functionalities. This ensures that the features configured by the generator work as expected.
+The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies the following functionalities:
 
-The test suite covers:
+#### Authentication Tests
+-   **User Registration**: Successful sign-up and invalid data handling.
+-   **Session Management**: Correct user login and logout.
+-   **Access Control**: Protected areas are only accessible to authenticated users.
+-   **Account Lockout**: The account is locked after the configured number of failed login attempts.
+-   **Password Recovery**: The full password reset flow works as expected.
 
--   **User Registration**: Verifies successful sign-up and handles invalid data.
--   **Session Management**: Confirms users can log in and log out correctly.
--   **Access Control**: Ensures protected areas are only accessible to authenticated users.
--   **Account Lockout**: Tests that a user's account is locked after the configured number of failed login attempts.
--   **Password Recovery**: Validates the full password reset flow, from email request to successful password change.
+#### Authorization Tests
+-   **Guest Access**: Unauthenticated users are redirected from protected URLs (e.g., `/posts/new`) to the login page.
+-   **Unauthorized Access**: An authenticated user cannot access another user's resources (e.g., trying to edit another's post) and is redirected with an alert message.
+-   **Authorized Access**: Resource owners can perform permitted actions (creating, editing, and deleting their own posts).
 
-Run the full test suite with:
-`bundle exec rspec`
+### Running the Test Suite
 
+To run the full test suite, clone the `demo_app` repository, install the dependencies (`bundle install`), and execute:
+```bash
+bundle exec rspec
+```
 
