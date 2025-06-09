@@ -25,6 +25,12 @@ This component focuses on protecting the integrity of the data handled by the ap
 - **Input Validation & Sanitization (Sanitize)**: Protects the application from Cross-Site Scripting (XSS) attacks by sanitizing all user-provided input.
 - **Secure Output Encoding & XSS Prevention (CSP)**: Complements input sanitization by providing a critical defense on the output layer. It instructs the browser to block and report a wide range of injection attacks, serving as a powerful final backstop.
 
+### Phase 3: Application Security Hardening
+
+This group of components hardens the application's configuration and communication protocols to mitigate a broad range of common attacks.
+
+- **Security Headers Management (SecureHeaders)**: Automatically applies crucial HTTP security headers to every response to protect against attacks like Clickjacking, MIME-type sniffing, and information leakage.
+
 ## Installation & Integration
 
 Add this line to your application's Gemfile:
@@ -149,6 +155,12 @@ The `secure_framework:install` generator automatically configures your applicati
     * Uses `nonces` for compatibility with Rails 7's internal scripts (Turbo/Importmaps).
     * Includes specific `sha256` hashes to securely allow necessary framework features (like `turbo_confirm`) to function without weakening the overall policy.
 
+6. **Comprehensive Security Headers:**
+    * Uses the `secure_headers` gem to create a policy at `config/initializers/secure_headers.rb`.
+    * Applies headers like `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` to defend against a wide array of browser-based attacks.
+    * It is configured to work harmoniously with the native Rails CSP, avoiding conflicts.
+
+
 ## Demonstration Application & Testing
 
 To verify that the framework functions as expected, validation is performed through a demonstration application (`demo_app`) that integrates the gem. **All security tests are located and run within this application**, serving as a real-world use case.
@@ -179,7 +191,10 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 #### Content Security Policy (CSP) Tests
 -   Asserts that the `Content-Security-Policy` HTTP header is present and sent with every response.
 -   Confirms that the policy is strict and does not contain the dangerous `'unsafe-inline'` directive for scripts or styles.
-- Verifies that the specific, secure `sha256` hashes for Turbo functionality are included in the policy.
+-   Verifies that the specific, secure `sha256` hashes for Turbo functionality are included in the policy.
+
+#### Security Headers Tests
+-   Confirms that key security headers (`X-Frame-Options`, `X-Content-Type-Options`, etc.) are present in the application's responses with the correct secure values.  
 
 ### Running the Test Suite
 

@@ -37,6 +37,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "devise", "~> 4.9.3"
   spec.add_dependency "pundit", "~> 2.3"
   spec.add_dependency "sanitize", ">= 6.0"
+  spec.add_dependency "secure_headers", ">= 6.5"
 
   # Dependencias para desarrollo
   spec.add_development_dependency "rspec-rails", "~> 6.1.0"
