@@ -13,23 +13,18 @@ This framework is implemented as a Ruby gem with Rails generators rather than a 
 
 ## Security Components
 
-### Phase 1: Secure Authentication (Devise)
+### Phase 1: Identity & Access Management (IAM)
 
-The first available component provides secure authentication based on **Devise**, with:
+This component establishes a solid foundation for knowing who a user is and what they are allowed to do.
 
--   Secure password storage (bcrypt).
--   **Strong Password Policy**: Automatically enforces a **12-character minimum** password length upon installation.
--   **Account Lockout**: Mitigates brute-force attacks by locking accounts after multiple failed attempts.
--   **Password Recovery**: Allows users to securely reset their password.
--   Session management and protection against CSRF attacks.
+- **Secure Authentication (Devise)**: Provides a robust and secure login system.
+- **Granular Authorization (Pundit)**: Enables fine-grained permission policies to control authenticated user actions.
 
-### Phase 2: Granular Authorization (Pundit)
+### Phase 2: Data & Input Protection
 
-The second component integrates **Pundit** to manage permissions, enabling fine-grained control over what an authenticated user is allowed to do.
+This component focuses on protecting the integrity of the data handled by the application.
 
--   **Clear Permission Policies**: Authorization logic is centralized in simple, easy-to-understand `Policy` classes.
--   **Automatic Setup**: The generator installs and configures Pundit in the `ApplicationController`, making it ready to use.
--   **Controller and View-Level Security**: Allows for easy protection of controller actions and conditionally rendering UI elements.
+- **Input Validation & Sanitization (Sanitize)**: Protects the application from Cross-Site Scripting (XSS) attacks by sanitizing all user-provided input.
 
 ## Installation & Integration
 
@@ -39,10 +34,10 @@ Add this line to your application's Gemfile:
 Then execute:
 `bundle install`
 
-Run the installation generator to set up Devise (with secure defaults) and Pundit:
+Run our installation generator. This command will install and configure all security components if it detects they have not yet been configured in your application:
 `rails generate secure_framework:install`
 
-Apply the database migrations:
+Apply the necessary database migrations (for Devise's User model):
 `rails db:migrate`
 
 ## Usage
@@ -65,11 +60,9 @@ end
 
 ### Authorization (What can a user do?)
 
-Once a user is authenticated, Pundit helps you manage their permissions.
-
 **1. Protecting Controller Actions:**
 
-Use the `authorize` method in your controller actions to enforce permission policies.
+Once a user is authenticated, use Pundit's `authorize` method in your controller actions to enforce permission policies.
 
 ```ruby
 # app/controllers/posts_controller.rb
@@ -98,6 +91,40 @@ Use the `policy` helper in your views to show or hide UI elements based on the c
 <% end %>
 ```
 
+### Input Sanitization (How to clean user data?)
+
+To protect against XSS attacks, you should sanitize all data that comes from a user before saving it. The framework provides a strict, "plain text only" default configuration.
+
+**Example Implementation in a Controller:**
+
+```ruby
+class PostsController < ApplicationController
+  def create
+    @post = current_user.posts.build(post_params)
+
+    # Apply sanitization to text fields before authorization and saving
+    @post.title = sanitize_input(@post.title)
+    @post.content = sanitize_input(@post.content)
+    
+    authorize @post
+
+    # ... save logic ...
+  end
+
+  private
+
+  def post_params
+    params.require(:post).permit(:title, :content)
+  end
+
+  def sanitize_input(dirty_data)
+    # Uses the framework's default configuration from the initializer
+    return nil unless dirty_data
+    Sanitize.fragment(dirty_data, Sanitize::Config::SECURE_FRAMEWORK)
+  end
+end
+```
+
 ## Automatic Security Features
 
 The `secure_framework:install` generator automatically configures your application with the following security-by-default settings:
@@ -110,6 +137,11 @@ The `secure_framework:install` generator automatically configures your applicati
     * Configuration can be found in `config/initializers/devise.rb`.
 
 3.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
+
+4. **Strict Input Sanitization**: 
+    * Creates an initializer at `config/initializers/sanitize.rb`.
+    * By default, this policy **strips all HTML tags** from user input, allowing only plain text. This effectively prevents XSS attacks.
+    * This configuration can be customized by the developer to allow specific HTML tags if needed.
 
 ## Demonstration Application & Testing
 
@@ -132,6 +164,11 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 -   **Guest Access**: Unauthenticated users are redirected from protected URLs (e.g., `/posts/new`) to the login page.
 -   **Unauthorized Access**: An authenticated user cannot access another user's resources (e.g., trying to edit another's post) and is redirected with an alert message.
 -   **Authorized Access**: Resource owners can perform permitted actions (creating, editing, and deleting their own posts).
+
+#### Input Sanitization Tests
+-   HTML tags (e.g., `<h1>`, `<b>`) are stripped from user input before being saved to the database.
+-   Malicious script tags (`<script>`) are completely removed to prevent XSS attacks.
+-   Sanitization is correctly applied to all relevant fields (e.g., title and content) when creating and updating a resource.
 
 ### Running the Test Suite
 

@@ -3,6 +3,7 @@
 require_relative "secure_framework/version"
 require "devise"
 require "pundit"
+require "sanitize"
 
 module SecureFramework
   class Error < StandardError; end

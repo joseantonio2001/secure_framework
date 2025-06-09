@@ -6,38 +6,46 @@ module SecureFramework
       source_root File.expand_path('templates', __dir__)
 
       def install_dependencies
-        # 1. Comprobar e instalar Devise
-        if devise_installed?
-          say "The 'devise' gem is already in Gemfile.lock. Skipping installation and configuration.", :yellow
+        # 1. Configurar Devise si es necesario
+        if devise_configured?
+          say "Devise already configured. Skipping Devise setup.", :yellow
         else
-          say "The 'devise' gem was not found. Proceeding with installation and configuration.", :cyan
+          say "Devise not configured yet. Running Devise setup...", :cyan
           install_devise_and_configure
         end
 
-        # 2. Comprobar e instalar Pundit
-        if pundit_installed?
-          say "The 'pundit' gem is already in Gemfile.lock. Skipping installation.", :yellow
+        # 2. Configurar Pundit si es necesario
+        if pundit_configured?
+          say "Pundit already configured. Skipping Pundit setup.", :yellow
         else
-          say "The 'pundit' gem was not found. Proceeding with installation.", :cyan
+          say "Pundit not configured yet. Running Pundit setup...", :cyan
           install_pundit
         end
-      end
+
+        # 3. Configurar Sanitize si es necesario
+        if sanitize_configured?
+          say "Sanitize already configured. Skipping Pundit setup.", :yellow
+        else
+          say "Sanitize not configured yet. Running Sanitize setup...", :cyan
+          install_sanitize_and_configure
+        end
+      end     
 
       private
 
       # MÉTODOS DE COMPROBACIÓN DE GEMFILE.LOCK
 
-      def devise_installed?
-        gemfile_lock_path = File.join(destination_root, 'Gemfile.lock')
-        return false unless File.exist?(gemfile_lock_path)
-        File.read(gemfile_lock_path).match?(/^\s+devise\s\(/)
+      def devise_configured?
+        File.exist?(File.join(destination_root, 'config/initializers/devise.rb'))
       end
 
-      def pundit_installed?
-        gemfile_lock_path = File.join(destination_root, 'Gemfile.lock')
-        return false unless File.exist?(gemfile_lock_path)
-        File.read(gemfile_lock_path).match?(/^\s+pundit\s\(/)
+      def pundit_configured?
+        File.exist?(File.join(destination_root, 'app/policies/application_policy.rb'))
       end
+
+      def sanitize_configured?
+        File.exist?(File.join(destination_root, 'config/initializers/sanitize.rb'))
+      end  
 
       # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SIN CAMBIOS, SÓLO SE EJECUTAN CUANDO ES NECESARIO)
       
@@ -70,7 +78,30 @@ module SecureFramework
         inject_into_class "app/controllers/application_controller.rb", ApplicationController do
           "  include Pundit::Authorization\n"
         end
-      end      
+      end
+      
+      def install_sanitize_and_configure
+        say "Creating strict Sanitize initializer (strips all HTML tags)...", :green
+        
+        initializer_path = "config/initializers/sanitize.rb"
+        
+        create_file initializer_path, <<~RUBY
+          # config/initializers/sanitize.rb
+          #
+          # Default configuration for the Sanitize gem, provided by secure_framework.
+          # This is a strict configuration that strips all HTML tags to prevent formatting.
+          # For more information on options: https://github.com/rgrove/sanitize
+
+          Sanitize::Config::SECURE_FRAMEWORK = {
+            # No HTML elements are allowed. The list is empty.
+            :elements => [],
+
+            # As an additional security measure, ensure the contents of these
+            # tags are also removed, in case an external configuration allows them.
+            :remove_contents => ['script', 'style']
+          }
+        RUBY
+      end
 
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
