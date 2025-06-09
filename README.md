@@ -30,6 +30,7 @@ This component focuses on protecting the integrity of the data handled by the ap
 This group of components hardens the application's configuration and communication protocols to mitigate a broad range of common attacks.
 
 - **Security Headers Management (SecureHeaders)**: Automatically applies crucial HTTP security headers to every response to protect against attacks like Clickjacking, MIME-type sniffing, and information leakage.
+- **Reinforced CSRF Protection**: Ensures Rails' built-in defense against Cross-Site Request Forgery is configured in its strictest mode, aborting malicious requests immediately.
 
 ## Installation & Integration
 
@@ -159,6 +160,13 @@ The `secure_framework:install` generator automatically configures your applicati
     * Uses the `secure_headers` gem to create a policy at `config/initializers/secure_headers.rb`.
     * Applies headers like `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` to defend against a wide array of browser-based attacks.
     * It is configured to work harmoniously with the native Rails CSP, avoiding conflicts.
+
+7. Reinforced CSRF Protection:
+    * Ensures all non-GET requests are verified against a unique CSRF token.
+    * Injects `protect_from_forgery with: :exception, prepend: true` into the `ApplicationController`.
+    * The `with: :exception` policy is stricter than the default, as it halts the entire request flow by raising an exception, making attacks immediately visible.
+    * The `prepend: true` option guarantees this security check runs before any other controller logic, ensuring its effectiveness even in applications using frameworks like Turbo.
+    * The generator is idempotent and will not modify the controller if a CSRF protection rule already exists.
 
 
 ## Demonstration Application & Testing

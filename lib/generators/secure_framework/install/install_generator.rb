@@ -44,7 +44,15 @@ module SecureFramework
         else
           say "Secure Headers not configured yet. Running setup...", :cyan
           install_secure_headers
-        end        
+        end
+        
+        # 6. Configurar Protección CSRF Reforzada si es necesario
+        if csrf_protection_configured?
+          say "CSRF protection already configured. Skipping setup.", :yellow
+        else
+          say "CSRF protection not configured yet. Running setup...", :cyan
+          install_csrf_protection
+        end
       end
 
       private
@@ -72,6 +80,12 @@ module SecureFramework
       
       def secure_headers_configured?
         File.exist?(File.join(destination_root, 'config/initializers/secure_headers.rb'))
+      end
+      
+      def csrf_protection_configured?
+        controller_path = File.join(destination_root, 'app', 'controllers', 'application_controller.rb')
+        return false unless File.exist?(controller_path)
+        File.read(controller_path).match?(/protect_from_forgery/)
       end      
 
       # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SIN CAMBIOS, SÓLO SE EJECUTAN CUANDO ES NECESARIO)
@@ -224,6 +238,15 @@ module SecureFramework
           end
         RUBY
       end
+
+      def install_csrf_protection
+        say "Injecting reinforced CSRF protection (with: :exception)...", :green
+        controller_path = "app/controllers/application_controller.rb"
+        
+        inject_into_file controller_path, after: "class ApplicationController < ActionController::Base\n" do
+          "  protect_from_forgery with: :exception\n"
+        end
+      end      
 
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
