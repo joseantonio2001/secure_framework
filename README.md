@@ -179,7 +179,7 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 #### Content Security Policy (CSP) Tests
 -   Asserts that the `Content-Security-Policy` HTTP header is present and sent with every response.
 -   Confirms that the policy is strict and does not contain the dangerous `'unsafe-inline'` directive for scripts or styles.
-Verifies that the specific, secure `sha256` hashes for Turbo functionality are included in the policy.
+- Verifies that the specific, secure `sha256` hashes for Turbo functionality are included in the policy.
 
 ### Running the Test Suite
 
