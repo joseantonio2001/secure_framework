@@ -8,8 +8,6 @@ This framework is implemented as a Ruby gem with Rails generators rather than a 
 
 1.  **Ease of Integration**: Generators allow for flexible integration into existing applications without complex mounting or namespace concerns.
 2.  **Customization**: Users can easily modify generated files to suit their specific needs.
-3.  **Incremental Adoption**: Components can be added gradually without requiring a full framework commitment.
-4.  **Simplified Development**: Gem development is more straightforward for our initial focus on core security components.
 
 ## Security Components
 
@@ -25,6 +23,7 @@ This component establishes a solid foundation for knowing who a user is and what
 This component focuses on protecting the integrity of the data handled by the application.
 
 - **Input Validation & Sanitization (Sanitize)**: Protects the application from Cross-Site Scripting (XSS) attacks by sanitizing all user-provided input.
+- **Secure Output Encoding & XSS Prevention (CSP)**: Complements input sanitization by providing a critical defense on the output layer. It instructs the browser to block and report a wide range of injection attacks, serving as a powerful final backstop.
 
 ## Installation & Integration
 
@@ -143,6 +142,13 @@ The `secure_framework:install` generator automatically configures your applicati
     * By default, this policy **strips all HTML tags** from user input, allowing only plain text. This effectively prevents XSS attacks.
     * This configuration can be customized by the developer to allow specific HTML tags if needed.
 
+5. **Strict Content Security Policy (CSP)**: 
+    * Creates a robust policy at `config/initializers/content_security_policy.rb`.
+    * Blocks unsafe inline scripts and styles, preventing XSS and UI defacement attacks.
+    * Restricts resource loading (images, fonts, etc.) to the application's own origin (`'self'`) or other secure `https:` sources.
+    * Uses `nonces` for compatibility with Rails 7's internal scripts (Turbo/Importmaps).
+    * Includes specific `sha256` hashes to securely allow necessary framework features (like `turbo_confirm`) to function without weakening the overall policy.
+
 ## Demonstration Application & Testing
 
 To verify that the framework functions as expected, validation is performed through a demonstration application (`demo_app`) that integrates the gem. **All security tests are located and run within this application**, serving as a real-world use case.
@@ -169,6 +175,11 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 -   HTML tags (e.g., `<h1>`, `<b>`) are stripped from user input before being saved to the database.
 -   Malicious script tags (`<script>`) are completely removed to prevent XSS attacks.
 -   Sanitization is correctly applied to all relevant fields (e.g., title and content) when creating and updating a resource.
+
+#### Content Security Policy (CSP) Tests
+-   Asserts that the `Content-Security-Policy` HTTP header is present and sent with every response.
+-   Confirms that the policy is strict and does not contain the dangerous `'unsafe-inline'` directive for scripts or styles.
+Verifies that the specific, secure `sha256` hashes for Turbo functionality are included in the policy.
 
 ### Running the Test Suite
 
