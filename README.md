@@ -32,6 +32,12 @@ This group of components hardens the application's configuration and communicati
 - **Security Headers Management (SecureHeaders)**: Automatically applies crucial HTTP security headers to every response to protect against attacks like Clickjacking, MIME-type sniffing, and information leakage.
 - **Reinforced CSRF Protection**: Ensures Rails' built-in defense against Cross-Site Request Forgery is configured in its strictest mode, aborting malicious requests immediately.
 
+### Phase 4: Secure Development Operations (SecDevOps)
+
+This component focuses on integrating security practices directly into the development and operations workflow.
+
+- **Secure Secrets Management**: Guides the user in setting up and using Rails' encrypted credentials, ensuring no secret keys are ever committed to version control.
+
 ## Installation & Integration
 
 Add this line to your application's Gemfile:
@@ -45,6 +51,9 @@ Run our installation generator. This command will install and configure all secu
 
 Apply the necessary database migrations (for Devise's User model):
 `rails db:migrate`
+
+Follow post-install instructions. The generator will prompt you with any required manual steps, such as editing your encrypted credentials to add secret keys.
+`bin/rails credentials:edit`
 
 ## Usage
 
@@ -131,6 +140,24 @@ class PostsController < ApplicationController
 end
 ```
 
+### Accessing Secrets (How to use credentials?)
+
+All secrets, such as API keys or external service passwords, should be stored in the encrypted `config/credentials.yml`.enc file. You can access them in your application using `Rails.application.credentials`. Using `.dig()` is recommended as it safely returns `nil` if a key is not found, preventing errors.
+
+**Example Implementation in a Controller:**
+
+```ruby
+class DashboardController < ApplicationController
+  before_action :authenticate_user!
+
+  def index
+    # Safely access the api_key from the encrypted credentials
+    @api_key = Rails.application.credentials.dig(:api_key)
+  end
+end
+```
+
+
 ## Automatic Security Features
 
 The `secure_framework:install` generator automatically configures your application with the following security-by-default settings:
@@ -142,26 +169,31 @@ The `secure_framework:install` generator automatically configures your applicati
     * The lock lasts for **30 minutes**.
     * Configuration can be found in `config/initializers/devise.rb`.
 
-3.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
+3.  **Secure Credentials & Key Management**:
+    * The generator ensures `config/master.key` is added to your `.gitignore` file, which is critical to prevent leaking the key that unlocks all your secrets.
+    * It migrates Devise's `secret_key` to be loaded from `config/credentials.yml.enc`, removing it from the standard initializer.
+    * It intelligently guides the user on next steps, such as running `bin/rails credentials:edit` to manage application secrets.    
 
-4. **Strict Input Sanitization**: 
+4.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
+
+5. **Strict Input Sanitization**: 
     * Creates an initializer at `config/initializers/sanitize.rb`.
     * By default, this policy **strips all HTML tags** from user input, allowing only plain text. This effectively prevents XSS attacks.
     * This configuration can be customized by the developer to allow specific HTML tags if needed.
 
-5. **Strict Content Security Policy (CSP)**: 
+6. **Strict Content Security Policy (CSP)**: 
     * Creates a robust policy at `config/initializers/content_security_policy.rb`.
     * Blocks unsafe inline scripts and styles, preventing XSS and UI defacement attacks.
     * Restricts resource loading (images, fonts, etc.) to the application's own origin (`'self'`) or other secure `https:` sources.
     * Uses `nonces` for compatibility with Rails 7's internal scripts (Turbo/Importmaps).
     * Includes specific `sha256` hashes to securely allow necessary framework features (like `turbo_confirm`) to function without weakening the overall policy.
 
-6. **Comprehensive Security Headers**:
+7. **Comprehensive Security Headers**:
     * Uses the `secure_headers` gem to create a policy at `config/initializers/secure_headers.rb`.
     * Applies headers like `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` to defend against a wide array of browser-based attacks.
     * It is configured to work harmoniously with the native Rails CSP, avoiding conflicts.
 
-7. **Reinforced CSRF Protection**:
+8. **Reinforced CSRF Protection**:
     * Ensures all non-GET requests are verified against a unique CSRF token.
     * Injects `protect_from_forgery with: :exception, prepend: true` into the `ApplicationController`.
     * The `with: :exception` policy is stricter than the default, as it halts the entire request flow by raising an exception, making attacks immediately visible.
@@ -208,6 +240,11 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 
 -   Verifies that `POST` requests without a valid CSRF token are rejected with an `unprocessable_entity` (422) status code.
 -   Confirms that a valid request can successfully create a resource. This test bypasses the token verification via a stub (`allow_any_instance_of`) to work around a known session persistence issue in the RSpec request spec environment, allowing the controller's internal "happy path" logic to be tested in isolation.   
+
+#### Secure Credentials Tests
+-   Verifies that a secret stored in Rails Credentials can be successfully loaded in the controller and displayed on a protected page.
+-   Confirms that the test suite can run without the actual master.key by correctly stubbing Rails.application.credentials. 
+-   Checks that the UI handles cases where the secret is missing gracefully.
 
 ### Running the Test Suite
 

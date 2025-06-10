@@ -5,8 +5,24 @@ module SecureFramework
     class InstallGenerator < Rails::Generators::Base
       source_root File.expand_path('templates', __dir__)
 
-      def install_dependencies
-        # 1. Configurar Devise si es necesario
+      # Orquesta la instalación y al final llama al resumen.
+      def install_all_components
+        run_component_installers
+        print_final_summary
+      end
+
+      private
+
+      def run_component_installers
+        # 1. Configurar Gestión Segura de Secretos (AHORA ES EL PRIMER PASO)
+        if secure_credentials_configured?
+          say "Secure Credentials management is already configured. Skipping.", :green
+        else
+          say "Secure Credentials management not configured yet. Running setup...", :cyan
+          install_secure_credentials
+        end
+
+        # 2. Configurar Devise si es necesario
         if devise_configured?
           say "Devise already configured. Skipping Devise setup.", :yellow
         else
@@ -14,7 +30,7 @@ module SecureFramework
           install_devise_and_configure
         end
 
-        # 2. Configurar Pundit si es necesario
+        # 3. Configurar Pundit si es necesario
         if pundit_configured?
           say "Pundit already configured. Skipping Pundit setup.", :yellow
         else
@@ -22,7 +38,7 @@ module SecureFramework
           install_pundit
         end
 
-        # 3. Configurar Sanitize si es necesario
+        # 4. Configurar Sanitize si es necesario
         if sanitize_configured?
           say "Sanitize already configured. Skipping Sanitize setup.", :yellow
         else
@@ -30,7 +46,7 @@ module SecureFramework
           install_sanitize_and_configure
         end
 
-        # 4. Configurar Content Security Policy (CSP) si es necesario
+        # 5. Configurar Content Security Policy (CSP) si es necesario
         if csp_configured?
           say "Content Security Policy appears to be actively configured. Skipping CSP setup.", :yellow
         else
@@ -38,7 +54,7 @@ module SecureFramework
           install_csp_and_configure
         end
 
-        # 5. Configurar Secure Headers si es necesario
+        # 6. Configurar Secure Headers si es necesario
         if secure_headers_configured?
           say "Secure Headers already configured. Skipping setup.", :yellow
         else
@@ -46,16 +62,14 @@ module SecureFramework
           install_secure_headers
         end
         
-        # 6. Configurar Protección CSRF Reforzada si es necesario
+        # 7. Configurar Protección CSRF Reforzada si es necesario
         if csrf_protection_configured?
           say "CSRF protection already configured. Skipping setup.", :yellow
         else
           say "CSRF protection not configured yet. Running setup...", :cyan
           install_csrf_protection
         end
-      end
-
-      private
+      end     
 
       # MÉTODOS DE COMPROBACIÓN
 
@@ -86,9 +100,35 @@ module SecureFramework
         controller_path = File.join(destination_root, 'app', 'controllers', 'application_controller.rb')
         return false unless File.exist?(controller_path)
         File.read(controller_path).match?(/protect_from_forgery/)
+      end
+      
+      def secure_credentials_configured?
+        master_key_exists = File.exist?(File.join(destination_root, 'config/master.key'))
+        
+        gitignore_path = File.join(destination_root, '.gitignore')
+        master_key_is_ignored = File.exist?(gitignore_path) && File.read(gitignore_path).include?('/config/master.key')
+    
+        master_key_exists && master_key_is_ignored
       end      
 
-      # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SIN CAMBIOS, SÓLO SE EJECUTAN CUANDO ES NECESARIO)
+      # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SÓLO SE EJECUTAN CUANDO ES NECESARIO)
+
+      def install_secure_credentials
+
+        @credentials_instructions_needed = true
+    
+        # Acción 1: Asegurar que master.key esté en .gitignore.
+        gitignore_path = File.join(destination_root, '.gitignore')
+        key_entry = '/config/master.key'
+    
+        # Crea .gitignore si no existe, para evitar errores.
+        create_file(gitignore_path) unless File.exist?(gitignore_path)
+    
+        unless File.read(gitignore_path).include?(key_entry)
+          say "Adding '#{key_entry}' to .gitignore...", :cyan
+          append_to_file gitignore_path, "\n# Added by secure_framework to protect secrets\n#{key_entry}\n"
+        end
+      end       
       
       def install_devise_and_configure
         say "Setting up Devise with enhanced security defaults...", :cyan
@@ -108,9 +148,6 @@ module SecureFramework
         # 4. Modificar el modelo de usuario y la migración
         prepare_user_model_for_locking
         prepare_migration_for_locking
-
-        # 5. Imprimir mensaje final
-        print_success_message
       end
 
       def install_pundit
@@ -246,8 +283,8 @@ module SecureFramework
         inject_into_file controller_path, after: "class ApplicationController < ActionController::Base\n" do
           "  protect_from_forgery with: :exception\n"
         end
-      end      
-
+      end
+  
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
         gsub_file 'config/initializers/devise.rb',
@@ -257,7 +294,7 @@ module SecureFramework
 
       def configure_account_locking
         say "Enabling account locking by default...", :yellow
-        # Descomentar y ajustar las opciones de bloqueo existentes para mantener la indentación
+        # Descomentar y ajustar las opciones de bloqueo existentes
         gsub_file 'config/initializers/devise.rb', '# config.lock_strategy = :failed_attempts', 'config.lock_strategy = :failed_attempts'
         gsub_file 'config/initializers/devise.rb', '# config.unlock_strategy = :both', 'config.unlock_strategy = :time'
         gsub_file 'config/initializers/devise.rb', '# config.maximum_attempts = 20', 'config.maximum_attempts = 5'
@@ -274,7 +311,7 @@ module SecureFramework
         # Comentar la clave original si existe
         gsub_file 'config/initializers/devise.rb', /^\s*config\.secret_key = '.+'/, '# \0'
         
-        say "Action required: Please run 'rails credentials:edit' to set your devise secret_key.", :red
+        @devise_secret_instruction_needed = true
       end
       
       def prepare_user_model_for_locking
@@ -295,19 +332,37 @@ module SecureFramework
         gsub_file migration_file, /#\s*(add_index :users, :unlock_token.*)/, '\1'
       end
 
-      def print_success_message
-        say "\n'secure_framework' has been successfully installed and configured!", :green
-        say "\nSummary of automated actions:", :bold
-        say "  ✓ Password length set to a minimum of 12 characters.", :green
-        say "  ✓ Account locking enabled after 5 failed attempts.", :green
-        say "  ✓ Devise secret_key configured to use Rails credentials.", :green
-        say "  ✓ User model updated to include :lockable.", :green
-        say "  ✓ Database migration updated for lockable fields.", :green
+      def print_final_summary
+        say "\n'secure_framework' has finished processing!", :green
         
-        say "\nNext steps:", :cyan
-        say "  1. Run 'rails credentials:edit' and add your Devise secret_key.", :yellow
-        say "  2. Run 'rails db:migrate' to apply changes to the database.", :yellow
-        say "  3. Protect your controllers with 'before_action :authenticate_user!'", :yellow
+        next_steps = []
+        credentials_task = nil
+        
+        # 1. Construir dinámicamente la tarea de credentials
+        if @devise_secret_instruction_needed
+          # Si Devise fue instalado, la instrucción es más específica.
+          credentials_task = "Run 'EDITOR=vim bin/rails credentials:edit' to set the 'secret_key' for Devise."
+        elsif @credentials_instructions_needed
+          # Si no, es la instrucción general.
+          credentials_task = "Run 'EDITOR=vim bin/rails credentials:edit' to manage your application secrets."
+        end
+
+        # 2. Añadir la tarea de credentials al principio de la lista si es necesaria.
+        next_steps.unshift(credentials_task) if credentials_task
+
+        # 3. Añadir otras tareas si son necesarias.
+        if @devise_secret_instruction_needed
+          next_steps << "Run 'rails db:migrate' to apply changes to the database."
+          next_steps << "Protect your controllers with 'before_action :authenticate_user!'"
+        end
+
+        # 4. Mostrar la lista final de próximos pasos si no está vacía.
+        unless next_steps.empty?
+          say "\nNext steps:", :cyan
+          next_steps.each_with_index do |step, index|
+            say "  #{index + 1}. #{step}", :yellow
+          end
+        end
       end
     end
   end
