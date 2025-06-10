@@ -157,6 +157,8 @@ class DashboardController < ApplicationController
 end
 ```
 
+  **⚠️ Important Security Note**: The example above shows how to load a secret into a controller variable. This variable should be used for **back-end operations only** (e.g., authenticating with a third-party API). **Never** render raw secrets in your HTML views, as this would expose them to the user and defeat the purpose of using encrypted credentials.
+
 
 ## Automatic Security Features
 
