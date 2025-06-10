@@ -37,6 +37,7 @@ This group of components hardens the application's configuration and communicati
 This component focuses on integrating security practices directly into the development and operations workflow.
 
 - **Secure Secrets Management**: Guides the user in setting up and using Rails' encrypted credentials, ensuring no secret keys are ever committed to version control.
+- **Dependency Auditing**: Integrates automated vulnerability scanning for all project dependencies (gems), ensuring the application's supply chain is secure.
 
 ## Installation & Integration
 
@@ -159,6 +160,23 @@ end
 
   **⚠️ Important Security Note**: The example above shows how to load a secret into a controller variable. This variable should be used for **back-end operations only** (e.g., authenticating with a third-party API). **Never** render raw secrets in your HTML views, as this would expose them to the user and defeat the purpose of using encrypted credentials.
 
+### Dependency Auditing (How to check for vulnerabilities?) 
+
+The framework provides two ways to check for known vulnerabilities in your project's dependencies:
+
+  1. **Rake Task (for command-line and CI/CD):**
+
+  The installation generator creates a Rake task that scans your `Gemfile.lock`. To run it, execute the following command from your terminal:
+
+  ```bash
+  rake dependency_audit:check
+  ```
+
+  This task is ideal for integration into a CI/CD pipeline, as it will exit with a non-zero status code (failing the build) if any vulnerabilities are found.
+
+  2. **Web Interface (in the demo application)**:
+
+  For manual checks, an authenticated user can visit the Dependency Audit page in the dashboard to see a real-time report of any vulnerabilities. 
 
 ## Automatic Security Features
 
@@ -202,6 +220,10 @@ The `secure_framework:install` generator automatically configures your applicati
     * The `prepend: true` option guarantees this security check runs before any other controller logic, ensuring its effectiveness even in applications using frameworks like Turbo.
     * The generator is idempotent and will not modify the controller if a CSRF protection rule already exists.
 
+9. **Automated Dependency Auditing**:
+    * The generator creates an idempotent Rake task at `lib/tasks/dependency_audit.rake` using the `bundler-audit` gem.
+    * This task scans your `Gemfile.lock` against a database of known vulnerabilities.
+    * It is designed for CI/CD integration and will fail the build process if insecure dependencies are found, enforcing a secure development lifecycle.
 
 ## Demonstration Application & Testing
 
@@ -247,6 +269,11 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 -   Verifies that a secret stored in Rails Credentials can be successfully loaded in the controller and displayed on a protected page.
 -   Confirms that the test suite can run without the actual master.key by correctly stubbing Rails.application.credentials. 
 -   Checks that the UI handles cases where the secret is missing gracefully.
+
+#### Dependency Audit Tests
+-   Verifies that the Dependency Audit page renders correctly for an authenticated user.
+-   Tests the "no vulnerabilities found" scenario, checking for the success message.
+-   Tests the "vulnerability found" scenario by using a mock scanner to inject a fake vulnerability, and confirms that the details are displayed correctly in the results table.
 
 ### Running the Test Suite
 

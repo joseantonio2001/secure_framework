@@ -14,7 +14,7 @@ module SecureFramework
       private
 
       def run_component_installers
-        # 1. Configurar Gestión Segura de Secretos (AHORA ES EL PRIMER PASO)
+        # 1. Configurar Gestión Segura de Secretos
         if secure_credentials_configured?
           say "Secure Credentials management is already configured. Skipping.", :green
         else
@@ -69,7 +69,15 @@ module SecureFramework
           say "CSRF protection not configured yet. Running setup...", :cyan
           install_csrf_protection
         end
-      end     
+        
+        # 8. Configurar Audit task si es necesario
+        if dependency_audit_configured?
+          say "Dependency Audit task is already configured. Skipping.", :green
+        else
+          say "Dependency Audit task not configured yet. Running setup...", :cyan
+          install_dependency_audit
+        end      
+      end
 
       # MÉTODOS DE COMPROBACIÓN
 
@@ -109,6 +117,10 @@ module SecureFramework
         master_key_is_ignored = File.exist?(gitignore_path) && File.read(gitignore_path).include?('/config/master.key')
     
         master_key_exists && master_key_is_ignored
+      end
+      
+      def dependency_audit_configured?
+        File.exist?(File.join(destination_root, 'lib/tasks/dependency_audit.rake'))
       end      
 
       # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SÓLO SE EJECUTAN CUANDO ES NECESARIO)
@@ -284,6 +296,52 @@ module SecureFramework
           "  protect_from_forgery with: :exception\n"
         end
       end
+
+      def install_dependency_audit
+        say "Creating dependency audit Rake task...", :green
+        task_path = "lib/tasks/dependency_audit.rake"
+
+        rake_task_content = <<-RAKE_TASK.strip_heredoc
+          # frozen_string_literal: true
+          # Task created by secure_framework to audit dependencies.
+
+          require 'bundler/audit/database'
+          require 'bundler/audit/scanner'
+
+          namespace :dependency_audit do
+            desc 'Scans dependencies for vulnerabilities'
+            task check: :environment do
+              puts "--> Updating vulnerability database..."
+              Bundler::Audit::Database.update!(quiet: true)
+
+              puts "--> Scanning Gemfile.lock for vulnerabilities..."
+              scanner = Bundler::Audit::Scanner.new
+              results = scanner.scan.to_a
+
+              if results.any?
+                puts "\\n[!] VULNERABILITIES FOUND\\n"
+                results.each do |result|
+                  if result.is_a?(Bundler::Audit::Scanner::UnpatchedGem)
+                    puts "=============================================="
+                    puts "  Gem:         \#{result.gem.name} (v\#{result.gem.version})"
+                    puts "  Advisory:    \#{result.advisory.title}"
+                    puts "  Criticality: \#{result.advisory.criticality&.to_s&.upcase || 'UNKNOWN'}"
+                    puts "  URL:         \#{result.advisory.url}"
+                    puts "  Solution:    Upgrade to version \#{result.advisory.patched_versions.join(', ')}"
+                    puts "==============================================\\n"
+                  end
+                end
+                # Abort with a non-zero exit code to fail CI builds
+                abort("Action required: Insecure dependencies found.")
+              else
+                puts "\\n[+] SUCCESS: No known vulnerabilities found."
+              end
+            end
+          end
+        RAKE_TASK
+
+        create_file task_path, rake_task_content
+      end      
   
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
