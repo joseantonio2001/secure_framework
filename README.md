@@ -1,7 +1,5 @@
 # Secure Framework
 
-[![Build Status](https://github.com/joseantonio2001/secure_framework/actions/workflows/main.yml/badge.svg)](https://github.com/joseantonio2001/secure_framework/actions/workflows/main.yml)
-
 A modular security framework for Ruby on Rails applications, providing reusable secure components following "secure by default" principles.
 
 ## Design Rationale
