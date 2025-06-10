@@ -39,6 +39,12 @@ This component focuses on integrating security practices directly into the devel
 - **Secure Secrets Management**: Guides the user in setting up and using Rails' encrypted credentials, ensuring no secret keys are ever committed to version control.
 - **Dependency Auditing**: Integrates automated vulnerability scanning for all project dependencies (gems), ensuring the application's supply chain is secure.
 
+### Phase 5: Auditing & Monitoring
+
+This component provides visibility into critical security-related activities occurring within the application.
+
+- **Detailed Security Logging (Lograge & Custom Logger)**: Establishes a dedicated, structured security log to record critical events such as failed login attempts and authorization failures, providing a clear audit trail.
+
 ## Installation & Integration
 
 Add this line to your application's Gemfile:
@@ -176,7 +182,42 @@ The framework provides two ways to check for known vulnerabilities in your proje
 
   2. **Web Interface (in the [demo application](https://github.com/joseantonio2001/demo_app))**:
 
-  For manual checks, an authenticated user can visit the Dependency Audit page in the dashboard to see a real-time report of any vulnerabilities. 
+  For manual checks, an authenticated user can visit the Dependency Audit page in the dashboard to see a real-time report of any vulnerabilities.
+
+  ### Detailed Security Logging (How to monitor events?)
+
+ The framework creates a dedicated, structured security log at log/security.log. This provides a clear, isolated audit trail for critical events.
+
+**Automatically Logged Events**
+  *   Failed Login Attempts: All unsuccessful login attempts are immediately logged with details like email, IP address, and user agent.
+  *   Account Lockouts: When a series of failed attempts results in an account being locked, a specific high-severity event is logged.
+
+**Manually Logged Events**
+
+  Some events, like authorization failures, require a manual hook in your application controllers.
+
+**Example (Logging Pundit Failures in ApplicationController):**
+```ruby
+class ApplicationController < ActionController::Base
+  # ...
+  rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized
+
+  private
+
+  def user_not_authorized(exception)
+    log_message = {
+      event: 'authorization_failure',
+      user: current_user&.id,
+      policy: exception.policy.class.to_s.underscore,
+      action: exception.query,
+      # ... other details
+    }.to_json
+    
+    SECURITY_LOGGER.error(log_message)
+    # ... redirect logic
+  end
+end
+```
 
 ## Automatic Security Features
 
@@ -192,38 +233,41 @@ The `secure_framework:install` generator automatically configures your applicati
 3.  **Secure Credentials & Key Management**:
     * The generator ensures `config/master.key` is added to your `.gitignore` file, which is critical to prevent leaking the key that unlocks all your secrets.
     * It migrates Devise's `secret_key` to be loaded from `config/credentials.yml.enc`, removing it from the standard initializer.
-    * It intelligently guides the user on next steps, such as running `bin/rails credentials:edit` to manage application secrets.    
+    * It intelligently guides the user on next steps, such as running `bin/rails credentials:edit` to manage application secrets.
 
-4.  **Secure Key Management**: The generator helps you move Devise's `secret_key` to the encrypted `config/credentials.yml.enc` file, preventing it from being exposed in your repository.
-
-5. **Strict Input Sanitization**: 
+4. **Strict Input Sanitization**: 
     * Creates an initializer at `config/initializers/sanitize.rb`.
     * By default, this policy **strips all HTML tags** from user input, allowing only plain text. This effectively prevents XSS attacks.
     * This configuration can be customized by the developer to allow specific HTML tags if needed.
 
-6. **Strict Content Security Policy (CSP)**: 
+5. **Strict Content Security Policy (CSP)**: 
     * Creates a robust policy at `config/initializers/content_security_policy.rb`.
     * Blocks unsafe inline scripts and styles, preventing XSS and UI defacement attacks.
     * Restricts resource loading (images, fonts, etc.) to the application's own origin (`'self'`) or other secure `https:` sources.
     * Uses `nonces` for compatibility with Rails 7's internal scripts (Turbo/Importmaps).
     * Includes specific `sha256` hashes to securely allow necessary framework features (like `turbo_confirm`) to function without weakening the overall policy.
 
-7. **Comprehensive Security Headers**:
+6. **Comprehensive Security Headers**:
     * Uses the `secure_headers` gem to create a policy at `config/initializers/secure_headers.rb`.
     * Applies headers like `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` to defend against a wide array of browser-based attacks.
     * It is configured to work harmoniously with the native Rails CSP, avoiding conflicts.
 
-8. **Reinforced CSRF Protection**:
+7. **Reinforced CSRF Protection**:
     * Ensures all non-GET requests are verified against a unique CSRF token.
     * Injects `protect_from_forgery with: :exception, prepend: true` into the `ApplicationController`.
     * The `with: :exception` policy is stricter than the default, as it halts the entire request flow by raising an exception, making attacks immediately visible.
     * The `prepend: true` option guarantees this security check runs before any other controller logic, ensuring its effectiveness even in applications using frameworks like Turbo.
     * The generator is idempotent and will not modify the controller if a CSRF protection rule already exists.
 
-9. **Automated Dependency Auditing**:
+8. **Automated Dependency Auditing**:
     * The generator creates an idempotent Rake task at `lib/tasks/dependency_audit.rake` using the `bundler-audit` gem.
     * This task scans your `Gemfile.lock` against a database of known vulnerabilities.
     * It is designed for CI/CD integration and will fail the build process if insecure dependencies are found, enforcing a secure development lifecycle.
+
+9. **Detailed Security Logging**:
+    * The generator creates an initializer that sets up a dedicated logger at `log/security.log`.
+    * It automatically hooks into the authentication system (Warden) to immediately log all failed login attempts, providing crucial data for detecting brute-force attacks.
+
 
 ## Demonstration Application & Testing
 
@@ -267,13 +311,16 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 
 #### Secure Credentials Tests
 -   Verifies that a secret stored in Rails Credentials can be successfully loaded in the controller and displayed on a protected page.
--   Confirms that the test suite can run without the actual master.key by correctly stubbing Rails.application.credentials. 
--   Checks that the UI handles cases where the secret is missing gracefully.
+-   Confirms an administrator can see the secret status on the dashboard, while a regular user cannot.
 
 #### Dependency Audit Tests
 -   Verifies that the Dependency Audit page renders correctly for an authenticated user.
 -   Tests the "no vulnerabilities found" scenario, checking for the success message.
 -   Tests the "vulnerability found" scenario by using a mock scanner to inject a fake vulnerability, and confirms that the details are displayed correctly in the results table.
+
+#### Security Logging Tests
+-   **Event Logging**: Verifies that failed logins, authorization failures, and account lockouts are correctly written to `log/security.log`.
+-   **UI Access Control**: Confirms that the log viewer page is only accessible to administrators and correctly displays log content, while regular users are denied access.
 
 ### Running the Test Suite
 

@@ -77,7 +77,15 @@ module SecureFramework
           say "Dependency Audit task not configured yet. Running setup...", :cyan
           install_dependency_audit
         end      
-      end
+
+        # 9. Configurar Logging de Seguridad si es necesario
+        if security_logging_configured?
+          say "Security Logging already configured. Skipping setup.", :yellow
+        else
+          say "Security Logging not configured yet. Running setup...", :cyan
+          install_security_logging
+        end
+      end      
 
       # MÉTODOS DE COMPROBACIÓN
 
@@ -121,7 +129,13 @@ module SecureFramework
       
       def dependency_audit_configured?
         File.exist?(File.join(destination_root, 'lib/tasks/dependency_audit.rake'))
-      end      
+      end
+      
+      def security_logging_configured?
+        lograge_exists = File.exist?(File.join(destination_root, 'config/initializers/lograge.rb'))
+        security_logger_exists = File.exist?(File.join(destination_root, 'config/initializers/security_logging.rb'))
+        lograge_exists && security_logger_exists
+      end 
 
       # MÉTODOS DE INSTALACIÓN Y CONFIGURACIÓN (SÓLO SE EJECUTAN CUANDO ES NECESARIO)
 
@@ -341,8 +355,54 @@ module SecureFramework
         RAKE_TASK
 
         create_file task_path, rake_task_content
-      end      
-  
+      end
+      
+      def install_security_logging
+        say "Creating security logging initializers...", :green
+        
+        @security_logging_instructions_needed = true
+        
+        # Este inicializador de lograge es correcto y defensivo
+        initializer "lograge.rb", <<~'RUBY'
+          Rails.application.configure do
+            if config.respond_to?(:lograge)
+              config.lograge.enabled = true
+              config.lograge.custom_options = lambda do |event|
+                {
+                  request_id: event.payload[:request_id],
+                  remote_ip: event.payload[:remote_ip],
+                  user_id: event.payload[:user_id]
+                }
+              end
+            end
+          end
+        RUBY
+
+        initializer "security_logging.rb", <<~'RUBY'
+          
+          security_log_path = Rails.root.join('log', 'security.log')
+          SECURITY_LOGGER = ActiveSupport::Logger.new(security_log_path, 10, 1024 * 1024)
+          SECURITY_LOGGER.formatter = proc do |severity, datetime, _progname, msg|
+            "[#{datetime.strftime('%Y-%m-%d %H:%M:%S')}] #{severity}: #{msg}\n"
+          end
+
+          Warden::Manager.before_failure do |env, opts|
+            request = ActionDispatch::Request.new(env)
+            if opts[:action] == 'unauthenticated' && opts[:scope] == :user && request.params['user']
+              log_message = {
+                event: 'failed_login_attempt',
+                email: request.params.dig('user', 'email'),
+                ip_address: request.remote_ip,
+                user_agent: request.user_agent,
+                path: request.path,
+                warden_message: opts[:message]
+              }.to_json
+              SECURITY_LOGGER.warn(log_message)
+            end
+          end
+        RUBY
+      end
+
       def configure_password_policy
         say "Applying secure password policy (12 characters minimum)...", :yellow
         gsub_file 'config/initializers/devise.rb',
@@ -396,29 +456,49 @@ module SecureFramework
         next_steps = []
         credentials_task = nil
         
-        # 1. Construir dinámicamente la tarea de credentials
         if @devise_secret_instruction_needed
-          # Si Devise fue instalado, la instrucción es más específica.
           credentials_task = "Run 'EDITOR=vim bin/rails credentials:edit' to set the 'secret_key' for Devise."
         elsif @credentials_instructions_needed
-          # Si no, es la instrucción general.
           credentials_task = "Run 'EDITOR=vim bin/rails credentials:edit' to manage your application secrets."
         end
 
-        # 2. Añadir la tarea de credentials al principio de la lista si es necesaria.
         next_steps.unshift(credentials_task) if credentials_task
 
-        # 3. Añadir otras tareas si son necesarias.
         if @devise_secret_instruction_needed
           next_steps << "Run 'rails db:migrate' to apply changes to the database."
           next_steps << "Protect your controllers with 'before_action :authenticate_user!'"
         end
+        
+        if @security_logging_instructions_needed
+          # --- INSTRUCCIÓN DE LOGRAGE CORREGIDA ---
+          next_steps << "Lograge has been enabled by default for all environments. If you wish to disable it for a specific environment (e.g., development), add this block to the corresponding file (e.g., 'config/environments/development.rb'):\n\n" \
+                        "     if config.respond_to?(:lograge)\n" \
+                        "       config.lograge.enabled = false\n" \
+                        "     end\n"
 
-        # 4. Mostrar la lista final de próximos pasos si no está vacía.
+          # --- INSTRUCCIÓN DE PUNDIT (SE MANTIENE IGUAL PORQUE ES CORRECTA) ---
+          next_steps << "To log authorization failures (Pundit), a manual step is required. Add this block to 'app/controllers/application_controller.rb':\n\n" \
+                        "     rescue_from Pundit::NotAuthorizedError, with: :user_not_authorized\n\n" \
+                        "     private\n\n" \
+                        "     def user_not_authorized(exception)\n" \
+                        "       policy_name = exception.policy.class.to_s.underscore\n" \
+                        "       log_message = {\n" \
+                        "         event: 'authorization_failure',\n" \
+                        "         user: current_user&.id,\n" \
+                        "         policy: policy_name,\n" \
+                        "         action: exception.query,\n" \
+                        "         ip_address: request.remote_ip\n" \
+                        "       }.to_json\n" \
+                        "       SECURITY_LOGGER.error(log_message)\n" \
+                        "       flash[:alert] = 'You are not authorized to perform this action.'\n" \
+                        "       redirect_to(request.referrer || root_path)\n" \
+                        "     end\n"
+        end
+
         unless next_steps.empty?
           say "\nNext steps:", :cyan
           next_steps.each_with_index do |step, index|
-            say "  #{index + 1}. #{step}", :yellow
+            puts "\n  #{index + 1}. #{step}"
           end
         end
       end

@@ -39,6 +39,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "sanitize", ">= 6.0"
   spec.add_dependency "secure_headers", ">= 6.5"
   spec.add_dependency "bundler-audit", "~> 0.9.1"
+  spec.add_dependency "lograge"
 
   # Dependencias para desarrollo
   spec.add_development_dependency "rspec-rails", "~> 6.1.0"
