@@ -174,7 +174,7 @@ The framework provides two ways to check for known vulnerabilities in your proje
 
   This task is ideal for integration into a CI/CD pipeline, as it will exit with a non-zero status code (failing the build) if any vulnerabilities are found.
 
-  2. **Web Interface (in the demo application)**:
+  2. **Web Interface (in the [demo application](https://github.com/joseantonio2001/demo_app))**:
 
   For manual checks, an authenticated user can visit the Dependency Audit page in the dashboard to see a real-time report of any vulnerabilities. 
 
