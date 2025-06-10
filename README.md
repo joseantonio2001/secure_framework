@@ -1,5 +1,7 @@
 # Secure Framework
 
+[![Build Status](https://github.com/joseantonio2001/secure_framework/actions/workflows/main.yml/badge.svg)](https://github.com/joseantonio2001/secure_framework/actions/workflows/main.yml)
+
 A modular security framework for Ruby on Rails applications, providing reusable secure components following "secure by default" principles.
 
 ## Design Rationale
@@ -156,12 +158,12 @@ The `secure_framework:install` generator automatically configures your applicati
     * Uses `nonces` for compatibility with Rails 7's internal scripts (Turbo/Importmaps).
     * Includes specific `sha256` hashes to securely allow necessary framework features (like `turbo_confirm`) to function without weakening the overall policy.
 
-6. **Comprehensive Security Headers:**
+6. **Comprehensive Security Headers**:
     * Uses the `secure_headers` gem to create a policy at `config/initializers/secure_headers.rb`.
     * Applies headers like `X-Frame-Options`, `X-Content-Type-Options`, and `Referrer-Policy` to defend against a wide array of browser-based attacks.
     * It is configured to work harmoniously with the native Rails CSP, avoiding conflicts.
 
-7. Reinforced CSRF Protection:
+7. **Reinforced CSRF Protection**:
     * Ensures all non-GET requests are verified against a unique CSRF token.
     * Injects `protect_from_forgery with: :exception, prepend: true` into the `ApplicationController`.
     * The `with: :exception` policy is stricter than the default, as it halts the entire request flow by raising an exception, making attacks immediately visible.
@@ -203,6 +205,11 @@ The `demo_app`'s test suite, written with **RSpec** and **Capybara**, verifies t
 
 #### Security Headers Tests
 -   Confirms that key security headers (`X-Frame-Options`, `X-Content-Type-Options`, etc.) are present in the application's responses with the correct secure values.  
+
+#### CSRF Protection Tests
+
+-   Verifies that `POST` requests without a valid CSRF token are rejected with an `unprocessable_entity` (422) status code.
+-   Confirms that a valid request can successfully create a resource. This test bypasses the token verification via a stub (`allow_any_instance_of`) to work around a known session persistence issue in the RSpec request spec environment, allowing the controller's internal "happy path" logic to be tested in isolation.   
 
 ### Running the Test Suite
 
